@@ -142,6 +142,11 @@
 
     <script>
    document.addEventListener("DOMContentLoaded", loadPosts);
+   window.addEventListener("storage", (event) => {
+        if (event.key === "posts") {
+            displayPosts(); // Reload posts if another page updates them
+        }
+    });
 
 function subscribeForNotifications() {
     const email = prompt("Enter your email to receive notifications:");
@@ -173,23 +178,26 @@ function notifySubscribers(post) {
 }
 
 function submitPost() {
-    const title = document.getElementById("title").value.trim();
-    const content = document.getElementById("content").value.trim();
-    if (!title || !content) return alert("Title and content are required!");
+        const title = document.getElementById("title").value.trim();
+        const content = document.getElementById("content").value.trim();
+        if (!title || !content) return alert("Title and content are required!");
 
-    const timestamp = Date.now();
-    const post = { id: timestamp, title, content, timestamp, comments: [] };
+        const timestamp = Date.now();
+        const post = { id: timestamp, title, content, timestamp };
 
-    let posts = JSON.parse(localStorage.getItem("posts")) || [];
-    posts.unshift(post);
-    localStorage.setItem("posts", JSON.stringify(posts));
+        let posts = JSON.parse(localStorage.getItem("posts")) || [];
+        posts.unshift(post);
+        localStorage.setItem("posts", JSON.stringify(posts));
 
-    notifySubscribers(post);
-    displayPosts();
-}
+        displayPosts();
+    }
+
+    document.addEventListener("DOMContentLoaded", displayPosts);
 
 function displayPosts() {
     const postsContainer = document.getElementById("posts");
+    if (!postsContainer) return;
+
     postsContainer.innerHTML = "";
     let posts = JSON.parse(localStorage.getItem("posts")) || [];
 
@@ -200,22 +208,12 @@ function displayPosts() {
         postContainer.innerHTML = `
             <h3>${post.title}</h3>
             <p>${post.content}</p>
-            <span class="timestamp">Posted on: ${new Date(post.timestamp).toLocaleString()}</span><br>
-            <button class="delete-btn" onclick="deletePost(${post.id})">Delete Post</button>
-
-            <div class="comment-section">
-                <h4>Comments</h4>
-                <input type="text" id="comment-input-${post.id}" class="comment-input" placeholder="Add a comment...">
-                <button class="comment-btn" onclick="addComment(${post.id})">Post Comment</button>
-                <div id="comments-${post.id}"></div>
-            </div>
+            <span class="timestamp">Posted on: ${new Date(post.timestamp).toLocaleString()}</span>
         `;
 
         postsContainer.appendChild(postContainer);
-        loadComments(post.id);
     });
 }
-
 function loadPosts() {
     displayPosts();
 }
