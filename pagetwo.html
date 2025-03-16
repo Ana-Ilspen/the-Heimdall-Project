@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Heimdall Project Forum</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #E0B0FF;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .signup-btn {
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .signup-btn:hover {
+            background-color: #0056b3;
+        }
+        .post {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            background: white;
+            width: 90%;
+            position: relative;
+        }
+        .comment-section {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .comment-input {
+            width: calc(100% - 22px);
+            padding: 8px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .comment-btn {
+            margin-top: 5px;
+            padding: 6px 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .comment-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .comment {
+            background: white;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 5px;
+            position: relative;
+            text-align: left;
+        }
+
+        .delete-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .nav-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #333;
+            padding: 10px 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .nav-bar a {
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            display: inline-block;
+            font-size: 16px;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .nav-bar a:hover {
+            background: #555;
+            border-radius: 5px;
+        }
+
+        .container {
+            margin-top: 60px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="nav-bar">
+            <a href="index.html">Home</a>
+            <a href="pagetwo.html">Forum</a>
+            <a href="contacts.html">The Heimdall Project</a>
+        </div>
+        <button class="signup-btn" onclick="subscribeForNotifications()">Sign Up for Notifications</button>
+        <h2>Create a New Post</h2>
+        <input type="text" id="title" placeholder="Title">
+        <textarea id="content" placeholder="Content"></textarea>
+        <button onclick="submitPost()">Submit</button>
+
+        <div id="posts"></div>
+    </div>
+
+    <script>
+   document.addEventListener("DOMContentLoaded", loadPosts);
+
+function subscribeForNotifications() {
+    const email = prompt("Enter your email to receive notifications:");
+
+    if (!email || !email.includes("@")) {
+        alert("Enter a valid email!");
+        return;
+    }
+
+    fetch("http://localhost:3000/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+    })
+    .then(response => response.json())
+    .then(data => alert(data.message))
+    .catch(error => console.error("Subscription error:", error));
+}
+
+function notifySubscribers(post) {
+    fetch("http://localhost:3000/new-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: post.title, content: post.content }),
+    })
+    .then(response => response.json())
+    .then(data => console.log(data.message))
+    .catch(error => console.error("Email notification error:", error));
+}
+
+function submitPost() {
+    const title = document.getElementById("title").value.trim();
+    const content = document.getElementById("content").value.trim();
+    if (!title || !content) return alert("Title and content are required!");
+
+    const timestamp = Date.now();
+    const post = { id: timestamp, title, content, timestamp, comments: [] };
+
+    let posts = JSON.parse(localStorage.getItem("posts")) || [];
+    posts.unshift(post);
+    localStorage.setItem("posts", JSON.stringify(posts));
+
+    notifySubscribers(post);
+    displayPosts();
+}
+
+function displayPosts() {
+    const postsContainer = document.getElementById("posts");
+    postsContainer.innerHTML = "";
+    let posts = JSON.parse(localStorage.getItem("posts")) || [];
+
+    posts.forEach((post) => {
+        const postContainer = document.createElement("div");
+        postContainer.classList.add("post");
+
+        postContainer.innerHTML = `
+            <h3>${post.title}</h3>
+            <p>${post.content}</p>
+            <span class="timestamp">Posted on: ${new Date(post.timestamp).toLocaleString()}</span><br>
+            <button class="delete-btn" onclick="deletePost(${post.id})">Delete Post</button>
+
+            <div class="comment-section">
+                <h4>Comments</h4>
+                <input type="text" id="comment-input-${post.id}" class="comment-input" placeholder="Add a comment...">
+                <button class="comment-btn" onclick="addComment(${post.id})">Post Comment</button>
+                <div id="comments-${post.id}"></div>
+            </div>
+        `;
+
+        postsContainer.appendChild(postContainer);
+        loadComments(post.id);
+    });
+}
+
+function loadPosts() {
+    displayPosts();
+}
+
+function deletePost(id) {
+    let posts = JSON.parse(localStorage.getItem("posts")) || [];
+    posts = posts.filter(post => post.id !== id);
+    localStorage.setItem("posts", JSON.stringify(posts));
+    displayPosts();
+}
+
+function addComment(postId) {
+    let commentInput = document.getElementById(`comment-input-${postId}`);
+    let commentText = commentInput.value.trim();
+
+    if (!commentText) return;
+
+    let posts = JSON.parse(localStorage.getItem("posts")) || [];
+    let post = posts.find(post => post.id === postId);
+    if (!post) return;
+
+    post.comments.push({ id: Date.now(), text: commentText });
+    localStorage.setItem("posts", JSON.stringify(posts));
+
+    commentInput.value = "";
+    loadComments(postId);
+}
+
+function loadComments(postId) {
+    let posts = JSON.parse(localStorage.getItem("posts")) || [];
+    let post = posts.find(post => post.id === postId);
+    if (!post) return;
+
+    let commentsContainer = document.getElementById(`comments-${postId}`);
+    commentsContainer.innerHTML = "";
+
+    post.comments.forEach(comment => {
+        let commentElement = document.createElement("div");
+        commentElement.classList.add("comment");
+        commentElement.innerHTML = `
+            <p>${comment.text}</p>
+            <button class="delete-btn" onclick="deleteComment(${postId}, ${comment.id})">Delete</button>
+        `;
+        commentsContainer.appendChild(commentElement);
+    });
+}
+
+function deleteComment(postId, commentId) {
+    let posts = JSON.parse(localStorage.getItem("posts")) || [];
+    let post = posts.find(post => post.id === postId);
+    if (!post) return;
+
+    post.comments = post.comments.filter(comment => comment.id !== commentId);
+    localStorage.setItem("posts", JSON.stringify(posts));
+
+    loadComments(postId);
+}
+
+    </script>
+</body>
+
+</html>
